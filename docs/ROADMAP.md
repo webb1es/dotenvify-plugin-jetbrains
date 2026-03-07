@@ -45,7 +45,6 @@ Output generation with all CLI flags ported:
 ### 1.5 IDE Actions
 - **"DotEnvify: Convert Selection"** — convert selected text in editor to `.env` format
 - **"DotEnvify: Convert File"** — convert an entire file
-- **"DotEnvify: Generate .env.example"** — strip values, keep keys
 - Actions available via: Editor context menu, Tools menu, keyboard shortcuts
 
 ### 1.6 Tool Window
@@ -100,10 +99,6 @@ Output generation with all CLI flags ported:
 - Side-by-side diff when merging Azure groups
 - Conflict resolution UI for duplicate keys
 
-### 3.4 .env.example Sync
-- Keep `.env.example` in sync with `.env` automatically
-- Warn when `.env` has keys not in `.env.example`
-
 ---
 
 ## Phase 4: Ecosystem
@@ -114,7 +109,6 @@ Output generation with all CLI flags ported:
 - HashiCorp Vault
 
 ### 4.2 Team Features
-- Shared `.env.example` templates
 - Team-wide default settings via VCS-committed config
 
 ### 4.3 Marketplace
@@ -144,8 +138,7 @@ dev.webbies.dotenvify
 │   └── DotEnvModels.kt        — Data classes (EnvEntry, FormatOptions, etc.)
 ├── actions/
 │   ├── ConvertSelectionAction.kt
-│   ├── ConvertFileAction.kt
-│   └── GenerateExampleAction.kt
+│   └── ConvertFileAction.kt
 ├── ui/
 │   ├── DotEnvifyToolWindow.kt
 │   └── DotEnvifyToolWindowFactory.kt
