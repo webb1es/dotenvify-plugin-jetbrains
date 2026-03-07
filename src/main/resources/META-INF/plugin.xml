@@ -15,7 +15,6 @@
         <li>Filter: ignore lowercase keys, URL-only values</li>
         <li>Preserve specific keys from existing .env</li>
         <li>Incremental backups before overwriting</li>
-        <li>Generate .env.example from .env</li>
         <li>Tool window with live preview</li>
     </ul>
     ]]></description>
@@ -23,10 +22,51 @@
     <depends>com.intellij.modules.platform</depends>
 
     <actions>
-        <!-- Phase 1: Core actions (to be registered as they are implemented) -->
+        <group id="DotEnvify.EditorPopupMenu" text="DotEnvify" popup="true">
+            <add-to-group group-id="EditorPopupMenu" anchor="last"/>
+            <action id="DotEnvify.ConvertSelection"
+                    class="dev.webbies.dotenvify.actions.ConvertSelectionAction"
+                    text="Convert Selection to .env"
+                    description="Convert selected key-value text to .env format">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt E"/>
+            </action>
+        </group>
+
+        <group id="DotEnvify.ProjectViewPopupMenu" text="DotEnvify" popup="true">
+            <add-to-group group-id="ProjectViewPopupMenu" anchor="last"/>
+            <action id="DotEnvify.ConvertFile"
+                    class="dev.webbies.dotenvify.actions.ConvertFileAction"
+                    text="Convert File to .env"
+                    description="Parse this file and convert to .env format"/>
+        </group>
+
+        <group id="DotEnvify.ToolsMenu" text="DotEnvify" popup="true">
+            <add-to-group group-id="ToolsMenu" anchor="last"/>
+            <reference ref="DotEnvify.ConvertSelection"/>
+            <reference ref="DotEnvify.ConvertFile"/>
+        </group>
     </actions>
 
     <extensions defaultExtensionNs="com.intellij">
-        <!-- Phase 1: Tool window and settings (to be registered as they are implemented) -->
+        <toolWindow id="DotEnvify"
+                    anchor="bottom"
+                    factoryClass="dev.webbies.dotenvify.ui.DotEnvifyToolWindowFactory"
+                    secondary="false"/>
+
+        <applicationService serviceImplementation="dev.webbies.dotenvify.settings.DotEnvifySettings"/>
+        <projectService serviceImplementation="dev.webbies.dotenvify.settings.DotEnvifyProjectSettings"/>
+        <projectService serviceImplementation="dev.webbies.dotenvify.diagnostics.EnvFileWatcher"/>
+
+        <applicationConfigurable
+                parentId="tools"
+                instance="dev.webbies.dotenvify.settings.DotEnvifySettingsConfigurable"
+                id="dev.webbies.dotenvify.settings.global"
+                displayName="DotEnvify"/>
+
+        <projectConfigurable
+                parentId="dev.webbies.dotenvify.settings.global"
+                instance="dev.webbies.dotenvify.settings.DotEnvifyProjectSettingsConfigurable"
+                id="dev.webbies.dotenvify.settings.project"
+                displayName="Project Settings"/>
     </extensions>
 </idea-plugin>
