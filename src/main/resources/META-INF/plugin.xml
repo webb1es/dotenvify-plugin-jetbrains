@@ -1,0 +1,32 @@
+<idea-plugin>
+    <id>dev.webbies.dotenvify</id>
+    <name>DotEnvify</name>
+    <vendor email="hello@webbies.dev" url="https://webbies.dev">Webbies</vendor>
+
+    <description><![CDATA[
+    Convert raw key-value pairs into properly formatted .env files — directly in your IDE.
+
+    <h3>Features</h3>
+    <ul>
+        <li>Parse multiple input formats (KEY=VALUE, KEY VALUE, line pairs, quoted values)</li>
+        <li>Optional <code>export</code> prefix</li>
+        <li>Smart quoting for URLs and values with spaces</li>
+        <li>Alphabetical sorting</li>
+        <li>Filter: ignore lowercase keys, URL-only values</li>
+        <li>Preserve specific keys from existing .env</li>
+        <li>Incremental backups before overwriting</li>
+        <li>Generate .env.example from .env</li>
+        <li>Tool window with live preview</li>
+    </ul>
+    ]]></description>
+
+    <depends>com.intellij.modules.platform</depends>
+
+    <actions>
+        <!-- Phase 1: Core actions (to be registered as they are implemented) -->
+    </actions>
+
+    <extensions defaultExtensionNs="com.intellij">
+        <!-- Phase 1: Tool window and settings (to be registered as they are implemented) -->
+    </extensions>
+</idea-plugin>
