@@ -176,6 +176,37 @@
 
 ---
 
+## Phase 3.5: Simplification, Optimization & UX Polish
+
+### 3.5.1 Simplification
+- [x] (2026-03-08) Extract reusable `FormatOptionsPanel` to eliminate duplicated checkboxes + `currentOptions()` across 3 files
+- [x] (2026-03-08) Extract shared `EnvFileApplicator` utility for the duplicated apply-to-file logic (tool window + Azure panel)
+- [x] (2026-03-08) Wire settings into tool window and actions — checkboxes should initialize from saved settings
+
+### 3.5.2 Optimization
+- [x] (2026-03-08) Store parsed entries as field in tool window — avoid re-parsing formatted output in `applyToFile()`
+- [x] (2026-03-08) Debounce `updatePreview()` with 200ms `javax.swing.Timer` to prevent jank on rapid input
+- [x] (2026-03-08) Optimize `EnvKeyScanner` — use `Files.lines()` (lazy), add file size cap (skip >1MB), limit scan depth
+
+### 3.5.3 UX Improvements
+- [x] (2026-03-08) Replace modal `Messages.show*` success/info dialogs with IntelliJ balloon notifications
+- [x] (2026-03-08) Make diagnostics results clickable — navigate to source file:line on click
+- [ ] Use `EditorTextField` with .env syntax coloring instead of plain `JBTextArea` for preview areas
+- [x] (2026-03-08) Add tool window tab icons (AllIcons)
+- [x] (2026-03-08) Persist Azure DevOps URL and group names in project settings — pre-fill on reopen
+- [x] (2026-03-08) Add selective merge to `EnvDiffDialog` — per-key checkboxes for conflict resolution
+- [x] (2026-03-08) Add drag-and-drop file support to tool window input area
+- [x] (2026-03-08) Add "Paste from Clipboard" button to tool window
+
+### 3.5.4 Polish & Marketplace Readiness
+- [x] (2026-03-08) Add plugin icon (pluginIcon.svg — 40x40)
+- [x] (2026-03-08) Add `<change-notes>` to plugin.xml
+- [x] (2026-03-08) Add keyboard shortcut for ConvertFile action (`Ctrl+Alt+Shift+E`)
+- [x] (2026-03-08) Register notification group in plugin.xml
+- [x] (2026-03-08) Narrow broad `catch (_: Exception)` to specific exception types where possible
+
+---
+
 ## Phase 4: Ecosystem
 
 - [ ] AWS Parameter Store integration
@@ -200,3 +231,4 @@ _Add notes here as you work through tasks. This helps with context when resuming
 - **2026-03-07:** Phase 3.2 (Auto-Watch) implemented — EnvFileWatcher service monitors .env changes via VFS listener, auto-re-runs diagnostics when enabled.
 - **2026-03-07:** Phase 3.3 (Merge/Diff) implemented — EnvDiffDialog shows side-by-side merge preview (added/removed/changed/unchanged), integrated into both Azure and Convert "Apply to .env" flows.
 - **2026-03-07:** Removed all .env.example functionality (GenerateExampleAction, formatExample, related tests/references).
+- **2026-03-08:** Phase 3.5 (Simplification, Optimization & UX Polish) — extracted FormatOptionsPanel and EnvFileApplicator to eliminate duplication; wired settings into tool window/actions; added debounced preview, lazy file scanning with 1MB cap; replaced modal dialogs with balloon notifications; diagnostics now clickable with file navigation; EnvDiffDialog upgraded to table with per-key merge checkboxes; added drag-and-drop, paste button, tool window icons, plugin icon, change-notes, ConvertFile shortcut, notification group; narrowed exception catches.

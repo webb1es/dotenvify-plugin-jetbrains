@@ -1,8 +1,10 @@
 package dev.webbies.dotenvify.diagnostics
 
+import java.io.IOException
 import java.nio.file.Files
 import java.nio.file.Path
 import kotlin.io.path.extension
+import kotlin.io.path.fileSize
 import kotlin.io.path.isRegularFile
 import kotlin.streams.toList
 
@@ -10,6 +12,9 @@ import kotlin.streams.toList
 object EnvKeyScanner {
 
     data class KeyReference(val key: String, val file: Path, val line: Int, val snippet: String)
+
+    /** Skip files larger than 1MB — unlikely to contain env references. */
+    private const val MAX_FILE_SIZE = 1_048_576L
 
     private val SOURCE_EXTENSIONS = setOf(
         "js", "jsx", "ts", "tsx", "mjs", "cjs",
@@ -70,15 +75,22 @@ object EnvKeyScanner {
         val references = mutableListOf<KeyReference>()
         for (file in collectSourceFiles(projectRoot)) {
             try {
-                Files.readAllLines(file).forEachIndexed { idx, line ->
-                    for (pattern in PATTERNS) {
-                        for (match in pattern.findAll(line)) {
-                            references.add(KeyReference(match.groupValues[1], file, idx + 1, line.trim()))
+                // Use lazy line stream instead of reading entire file into memory
+                Files.lines(file).use { lines ->
+                    var lineNum = 0
+                    lines.forEach { line ->
+                        lineNum++
+                        for (pattern in PATTERNS) {
+                            for (match in pattern.findAll(line)) {
+                                references.add(KeyReference(match.groupValues[1], file, lineNum, line.trim()))
+                            }
                         }
                     }
                 }
-            } catch (_: Exception) {
-                // Skip unreadable files (binary, encoding issues)
+            } catch (_: IOException) {
+                // Skip unreadable files
+            } catch (_: java.io.UncheckedIOException) {
+                // Skip files with encoding issues (thrown by Files.lines)
             }
         }
         return references
@@ -92,6 +104,7 @@ object EnvKeyScanner {
         return Files.walk(root).filter { path ->
             path.isRegularFile() &&
                 path.extension in SOURCE_EXTENSIONS &&
+                path.fileSize() <= MAX_FILE_SIZE &&
                 SKIP_DIRS.none { dir ->
                     val rel = root.relativize(path).toString()
                     rel.startsWith("$dir/") || rel.startsWith("$dir\\")

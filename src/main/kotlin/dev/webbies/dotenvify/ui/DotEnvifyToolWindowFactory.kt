@@ -1,5 +1,6 @@
 package dev.webbies.dotenvify.ui
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.wm.ToolWindow
 import com.intellij.openapi.wm.ToolWindowFactory
@@ -12,9 +13,15 @@ class DotEnvifyToolWindowFactory : ToolWindowFactory {
     override fun createToolWindowContent(project: Project, toolWindow: ToolWindow) {
         val contentFactory = ContentFactory.getInstance()
 
-        val convertTab = contentFactory.createContent(DotEnvifyToolWindowPanel(project), "Convert", false)
-        val azureTab = contentFactory.createContent(AzureVariableGroupPanel(project), "Azure DevOps", false)
-        val diagnosticsTab = contentFactory.createContent(DiagnosticsPanel(project), "Diagnostics", false)
+        val convertTab = contentFactory.createContent(DotEnvifyToolWindowPanel(project), "Convert", false).apply {
+            icon = AllIcons.Actions.RealIntentionBulb
+        }
+        val azureTab = contentFactory.createContent(AzureVariableGroupPanel(project), "Azure DevOps", false).apply {
+            icon = AllIcons.Providers.Azure
+        }
+        val diagnosticsTab = contentFactory.createContent(DiagnosticsPanel(project), "Diagnostics", false).apply {
+            icon = AllIcons.Actions.Find
+        }
 
         toolWindow.contentManager.addContent(convertTab)
         toolWindow.contentManager.addContent(azureTab)

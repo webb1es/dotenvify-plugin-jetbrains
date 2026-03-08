@@ -2,15 +2,22 @@ package dev.webbies.dotenvify.diagnostics
 
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
+import com.intellij.openapi.fileEditor.OpenFileDescriptor
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
+import com.intellij.openapi.vfs.LocalFileSystem
+import com.intellij.ui.ColoredListCellRenderer
+import com.intellij.ui.SimpleTextAttributes
+import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
-import com.intellij.ui.components.JBTextArea
-import dev.webbies.dotenvify.ui.MONO_FONT
+import dev.webbies.dotenvify.ui.EnvFileApplicator
+import com.intellij.notification.NotificationType
 import java.awt.BorderLayout
 import java.awt.Dimension
+import java.awt.event.MouseAdapter
+import java.awt.event.MouseEvent
 import java.nio.file.Files
 import java.nio.file.Path
 import javax.swing.*
@@ -22,7 +29,35 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
         toolTipText = "Automatically re-run diagnostics when .env file changes"
     }
     private val statusLabel = JLabel("Click 'Run Diagnostics' to scan your project")
-    private val resultArea = JBTextArea().apply { isEditable = false; font = MONO_FONT }
+
+    /** Each item is a navigable diagnostic entry. */
+    private data class DiagnosticItem(
+        val label: String,
+        val detail: String?,
+        val file: Path? = null,
+        val line: Int = 0,
+        val isHeader: Boolean = false,
+    )
+
+    private val listModel = DefaultListModel<DiagnosticItem>()
+    private val resultList = JBList(listModel).apply {
+        cellRenderer = object : ColoredListCellRenderer<DiagnosticItem>() {
+            override fun customizeCellRenderer(
+                list: JList<out DiagnosticItem>, value: DiagnosticItem?,
+                index: Int, selected: Boolean, hasFocus: Boolean,
+            ) {
+                val item = value ?: return
+                if (item.isHeader) {
+                    append(item.label, SimpleTextAttributes.REGULAR_BOLD_ATTRIBUTES)
+                } else if (item.file != null) {
+                    append("  ${item.label}", SimpleTextAttributes.REGULAR_ATTRIBUTES)
+                    item.detail?.let { append("  $it", SimpleTextAttributes.GRAYED_ATTRIBUTES) }
+                } else {
+                    append("  ${item.label}", SimpleTextAttributes.REGULAR_ATTRIBUTES)
+                }
+            }
+        }
+    }
 
     private val watcherListener = EnvFileWatcher.EnvChangeListener {
         ApplicationManager.getApplication().invokeLater {
@@ -41,7 +76,7 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
         }
 
         add(buttonPanel, BorderLayout.NORTH)
-        add(JBScrollPane(resultArea).apply {
+        add(JBScrollPane(resultList).apply {
             preferredSize = Dimension(600, 400)
             border = BorderFactory.createTitledBorder("Results")
         }, BorderLayout.CENTER)
@@ -52,6 +87,22 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
             if (autoWatchCheckbox.isSelected) { watcher.addListener(watcherListener); runDiagnostics() }
             else watcher.removeListener(watcherListener)
         }
+
+        // Double-click to navigate to source
+        resultList.addMouseListener(object : MouseAdapter() {
+            override fun mouseClicked(e: MouseEvent) {
+                if (e.clickCount == 2) {
+                    val item = resultList.selectedValue ?: return
+                    navigateTo(item)
+                }
+            }
+        })
+    }
+
+    private fun navigateTo(item: DiagnosticItem) {
+        val filePath = item.file ?: return
+        val vf = LocalFileSystem.getInstance().findFileByNioFile(filePath) ?: return
+        OpenFileDescriptor(project, vf, item.line - 1, 0).navigate(true)
     }
 
     private fun runDiagnostics() {
@@ -59,7 +110,9 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
         val envFile = projectRoot.resolve(".env")
 
         if (!Files.exists(envFile)) {
-            resultArea.text = "No .env file found in project root.\nCreate a .env file first, then run diagnostics."
+            listModel.clear()
+            listModel.addElement(DiagnosticItem("No .env file found in project root.", null, isHeader = true))
+            listModel.addElement(DiagnosticItem("Create a .env file first, then run diagnostics.", null))
             statusLabel.text = "No .env file"
             return
         }
@@ -76,9 +129,17 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
                         displayResult(result, projectRoot)
                         scanButton.isEnabled = true
                     }
-                } catch (e: Exception) {
+                } catch (e: java.io.IOException) {
                     ApplicationManager.getApplication().invokeLater {
-                        resultArea.text = "Scan failed: ${e.message}"
+                        listModel.clear()
+                        listModel.addElement(DiagnosticItem("Scan failed: ${e.message}", null, isHeader = true))
+                        statusLabel.text = "Error"
+                        scanButton.isEnabled = true
+                    }
+                } catch (e: SecurityException) {
+                    ApplicationManager.getApplication().invokeLater {
+                        listModel.clear()
+                        listModel.addElement(DiagnosticItem("Permission denied: ${e.message}", null, isHeader = true))
                         statusLabel.text = "Error"
                         scanButton.isEnabled = true
                     }
@@ -88,39 +149,50 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
     }
 
     private fun displayResult(result: EnvDiagnostics.DiagnosticResult, projectRoot: Path) {
-        val sb = StringBuilder().apply {
-            appendLine("=== DIAGNOSTICS SUMMARY ===")
-            appendLine("Keys in .env: ${result.envKeys.size} | Keys referenced in code: ${result.referencedKeys.size}")
-            appendLine()
+        listModel.clear()
 
-            if (result.missingKeys.isNotEmpty()) {
-                appendLine("--- MISSING FROM .env (${result.missingKeys.size}) ---")
-                for (missing in result.missingKeys) {
-                    appendLine("  ${missing.key}")
-                    missing.references.take(3).forEach { ref ->
-                        appendLine("    -> ${projectRoot.relativize(ref.file)}:${ref.line}")
-                        appendLine("       ${ref.snippet}")
-                    }
-                    if (missing.references.size > 3) appendLine("    ... and ${missing.references.size - 3} more")
-                    appendLine()
+        listModel.addElement(DiagnosticItem(
+            "Keys in .env: ${result.envKeys.size} | Keys referenced in code: ${result.referencedKeys.size}",
+            null, isHeader = true
+        ))
+
+        if (result.missingKeys.isNotEmpty()) {
+            listModel.addElement(DiagnosticItem("", null)) // spacer
+            listModel.addElement(DiagnosticItem("MISSING FROM .env (${result.missingKeys.size})", null, isHeader = true))
+            for (missing in result.missingKeys) {
+                for (ref in missing.references.take(3)) {
+                    val relPath = projectRoot.relativize(ref.file)
+                    listModel.addElement(DiagnosticItem(
+                        "${missing.key}",
+                        "$relPath:${ref.line}  ${ref.snippet}",
+                        file = ref.file,
+                        line = ref.line,
+                    ))
                 }
-            } else {
-                appendLine("No missing keys — all referenced keys are defined in .env.")
-                appendLine()
+                if (missing.references.size > 3) {
+                    listModel.addElement(DiagnosticItem(
+                        "  ... and ${missing.references.size - 3} more references", null
+                    ))
+                }
             }
-
-            if (result.unusedKeys.isNotEmpty()) {
-                appendLine("--- UNUSED IN .env (${result.unusedKeys.size}) ---")
-                result.unusedKeys.forEach { appendLine("  $it") }
-                appendLine()
-                appendLine("Note: Some keys may be used via dynamic access not detectable by static analysis.")
-            } else {
-                appendLine("No unused keys — all .env keys are referenced in code.")
-            }
+        } else {
+            listModel.addElement(DiagnosticItem("", null))
+            listModel.addElement(DiagnosticItem("No missing keys — all referenced keys are defined in .env.", null))
         }
 
-        resultArea.text = sb.toString()
-        resultArea.caretPosition = 0
+        if (result.unusedKeys.isNotEmpty()) {
+            listModel.addElement(DiagnosticItem("", null))
+            listModel.addElement(DiagnosticItem("UNUSED IN .env (${result.unusedKeys.size})", null, isHeader = true))
+            result.unusedKeys.forEach {
+                listModel.addElement(DiagnosticItem(it, "Defined in .env but not referenced in code"))
+            }
+            listModel.addElement(DiagnosticItem("", null))
+            listModel.addElement(DiagnosticItem("Note: Some keys may be used via dynamic access not detectable by static analysis.", null))
+        } else {
+            listModel.addElement(DiagnosticItem("", null))
+            listModel.addElement(DiagnosticItem("No unused keys — all .env keys are referenced in code.", null))
+        }
+
         val issues = result.missingKeys.size + result.unusedKeys.size
         statusLabel.text = if (issues == 0) "No issues found" else "$issues issue(s) found"
     }

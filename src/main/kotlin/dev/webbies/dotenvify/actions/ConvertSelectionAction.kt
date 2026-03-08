@@ -7,13 +7,15 @@ import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.command.WriteCommandAction
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
-import com.intellij.openapi.ui.Messages
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import dev.webbies.dotenvify.core.DotEnvFormatter
 import dev.webbies.dotenvify.core.DotEnvParser
 import dev.webbies.dotenvify.core.FormatOptions
+import dev.webbies.dotenvify.ui.FormatOptionsPanel
 import dev.webbies.dotenvify.ui.MONO_FONT
+import dev.webbies.dotenvify.ui.EnvFileApplicator
+import com.intellij.notification.NotificationType
 import java.awt.BorderLayout
 import java.awt.Dimension
 import javax.swing.*
@@ -26,13 +28,13 @@ class ConvertSelectionAction : AnAction() {
         val selectedText = editor.selectionModel.selectedText
 
         if (selectedText.isNullOrBlank()) {
-            Messages.showInfoMessage(project, "Please select some text to convert.", "DotEnvify")
+            EnvFileApplicator.notify(project, "Please select some text to convert.", NotificationType.WARNING)
             return
         }
 
         val parseResult = DotEnvParser.parse(selectedText)
         if (parseResult.entries.isEmpty()) {
-            Messages.showWarningDialog(project, "No key-value pairs found in selection.", "DotEnvify")
+            EnvFileApplicator.notify(project, "No key-value pairs found in selection.", NotificationType.WARNING)
             return
         }
 
@@ -66,11 +68,7 @@ class PreviewDialog(
 ) : DialogWrapper(project) {
 
     private val previewArea = JBTextArea().apply { isEditable = false; font = MONO_FONT }
-    private val exportCheckbox = JCheckBox("Add export prefix")
-    private val sortCheckbox = JCheckBox("Sort alphabetically", true)
-    private val noLowerCheckbox = JCheckBox("Ignore lowercase keys")
-    private val urlOnlyCheckbox = JCheckBox("URL-only values")
-    private val checkboxes = listOf(exportCheckbox, sortCheckbox, noLowerCheckbox, urlOnlyCheckbox)
+    private val optionsPanel = FormatOptionsPanel(project)
 
     init {
         title = "DotEnvify — Preview ($entryCount entries)"
@@ -80,14 +78,7 @@ class PreviewDialog(
     }
 
     override fun createCenterPanel(): JComponent {
-        val optionsPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            checkboxes.forEachIndexed { i, cb ->
-                if (i > 0) add(Box.createHorizontalStrut(12))
-                add(cb)
-            }
-        }
-        checkboxes.forEach { it.addItemListener { updatePreview() } }
+        optionsPanel.onChange { updatePreview() }
 
         return JPanel(BorderLayout(0, 8)).apply {
             add(optionsPanel, BorderLayout.NORTH)
@@ -95,14 +86,7 @@ class PreviewDialog(
         }
     }
 
-    fun getFormattedOutput(): String = formatter(currentOptions())
+    fun getFormattedOutput(): String = formatter(optionsPanel.options())
 
     private fun updatePreview() { previewArea.text = getFormattedOutput() }
-
-    private fun currentOptions() = FormatOptions(
-        exportPrefix = exportCheckbox.isSelected,
-        sort = sortCheckbox.isSelected,
-        ignoreLowercase = noLowerCheckbox.isSelected,
-        urlOnly = urlOnlyCheckbox.isSelected,
-    )
 }

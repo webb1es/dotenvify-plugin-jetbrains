@@ -19,6 +19,8 @@ class DotEnvifyProjectSettings : PersistentStateComponent<DotEnvifyProjectSettin
         var urlOnly: Boolean = false,
         var outputPath: String = ".env",
         var preserveKeys: String = "",
+        var azureOrgUrl: String = "",
+        var azureGroupNames: String = "",
     )
 
     private var state = State()

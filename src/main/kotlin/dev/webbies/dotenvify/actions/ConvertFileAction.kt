@@ -1,16 +1,17 @@
 package dev.webbies.dotenvify.actions
 
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.actionSystem.ActionUpdateThread
 import com.intellij.openapi.actionSystem.AnAction
 import com.intellij.openapi.actionSystem.AnActionEvent
 import com.intellij.openapi.actionSystem.CommonDataKeys
 import com.intellij.openapi.fileChooser.FileChooserFactory
 import com.intellij.openapi.fileChooser.FileSaverDescriptor
-import com.intellij.openapi.ui.Messages
 import com.intellij.openapi.vfs.LocalFileSystem
 import dev.webbies.dotenvify.core.DotEnvFormatter
 import dev.webbies.dotenvify.core.DotEnvIO
 import dev.webbies.dotenvify.core.DotEnvParser
+import dev.webbies.dotenvify.ui.EnvFileApplicator
 import java.nio.file.Path
 
 class ConvertFileAction : AnAction() {
@@ -23,11 +24,7 @@ class ConvertFileAction : AnAction() {
         val parseResult = DotEnvParser.parse(content)
 
         if (parseResult.entries.isEmpty()) {
-            Messages.showWarningDialog(
-                project,
-                "No key-value pairs found in '${virtualFile.name}'.",
-                "DotEnvify"
-            )
+            EnvFileApplicator.notify(project, "No key-value pairs found in '${virtualFile.name}'.", NotificationType.WARNING)
             return
         }
 
@@ -37,26 +34,15 @@ class ConvertFileAction : AnAction() {
 
         if (dialog.showAndGet()) {
             val output = dialog.getFormattedOutput()
-
-            // Ask where to save
             val descriptor = FileSaverDescriptor("Save .env File", "Choose where to save the .env file")
             val wrapper = FileChooserFactory.getInstance()
                 .createSaveFileDialog(descriptor, project)
-                .save(virtualFile.parent, ".env")
+                .save(virtualFile.parent, ".env") ?: return
 
-            if (wrapper != null) {
-                val targetPath = Path.of(wrapper.file.absolutePath)
-                DotEnvIO.writeEnvFile(targetPath, output, backup = true)
-
-                // Refresh VFS so the file shows up in the IDE
-                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(targetPath)
-
-                Messages.showInfoMessage(
-                    project,
-                    "Saved ${parseResult.entries.size} variables to '${wrapper.file.name}'.",
-                    "DotEnvify"
-                )
-            }
+            val targetPath = Path.of(wrapper.file.absolutePath)
+            DotEnvIO.writeEnvFile(targetPath, output, backup = true)
+            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(targetPath)
+            EnvFileApplicator.notify(project, "Saved ${parseResult.entries.size} variables to '${wrapper.file.name}'.")
         }
     }
 

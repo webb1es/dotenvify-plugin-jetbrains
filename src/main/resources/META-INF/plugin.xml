@@ -16,8 +16,26 @@
         <li>Preserve specific keys from existing .env</li>
         <li>Incremental backups before overwriting</li>
         <li>Tool window with live preview</li>
+        <li>Drag-and-drop file support</li>
+        <li>Azure DevOps variable group integration with OAuth</li>
+        <li>Multi-language diagnostics: detect missing/unused env keys across JS, Python, Go, Java, Kotlin, Ruby, PHP, Rust, C#, YAML</li>
+        <li>Merge preview with per-key conflict resolution</li>
     </ul>
     ]]></description>
+
+    <change-notes><![CDATA[
+    <h3>0.1.0</h3>
+    <ul>
+        <li>Initial release</li>
+        <li>Multi-format .env parser and formatter</li>
+        <li>Convert selection and file actions with live preview</li>
+        <li>Tool window with Convert, Azure DevOps, and Diagnostics tabs</li>
+        <li>Azure DevOps variable group fetch via Device Code OAuth</li>
+        <li>Multi-language env key diagnostics with clickable navigation</li>
+        <li>Merge preview with selective per-key conflict resolution</li>
+        <li>Global and per-project settings</li>
+    </ul>
+    ]]></change-notes>
 
     <depends>com.intellij.modules.platform</depends>
 
@@ -37,7 +55,9 @@
             <action id="DotEnvify.ConvertFile"
                     class="dev.webbies.dotenvify.actions.ConvertFileAction"
                     text="Convert File to .env"
-                    description="Parse this file and convert to .env format"/>
+                    description="Parse this file and convert to .env format">
+                <keyboard-shortcut keymap="$default" first-keystroke="ctrl alt shift E"/>
+            </action>
         </group>
 
         <group id="DotEnvify.ToolsMenu" text="DotEnvify" popup="true">
@@ -51,6 +71,7 @@
         <toolWindow id="DotEnvify"
                     anchor="bottom"
                     factoryClass="dev.webbies.dotenvify.ui.DotEnvifyToolWindowFactory"
+                    icon="AllIcons.FileTypes.Properties"
                     secondary="false"/>
 
         <applicationService serviceImplementation="dev.webbies.dotenvify.settings.DotEnvifySettings"/>
@@ -68,5 +89,9 @@
                 instance="dev.webbies.dotenvify.settings.DotEnvifyProjectSettingsConfigurable"
                 id="dev.webbies.dotenvify.settings.project"
                 displayName="Project Settings"/>
+
+        <notificationGroup id="DotEnvify.Notifications"
+                           displayType="BALLOON"
+                           toolWindowId="DotEnvify"/>
     </extensions>
 </idea-plugin>

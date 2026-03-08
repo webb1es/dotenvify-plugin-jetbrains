@@ -1,24 +1,26 @@
 package dev.webbies.dotenvify.azure
 
 import com.intellij.ide.BrowserUtil
+import com.intellij.notification.NotificationType
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.Messages
-import com.intellij.openapi.vfs.LocalFileSystem
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
 import dev.webbies.dotenvify.core.DotEnvFormatter
-import dev.webbies.dotenvify.core.DotEnvIO
 import dev.webbies.dotenvify.core.EnvEntry
 import dev.webbies.dotenvify.core.FormatOptions
-import dev.webbies.dotenvify.ui.EnvDiffDialog
+import dev.webbies.dotenvify.settings.DotEnvifyProjectSettings
+import dev.webbies.dotenvify.ui.EnvFileApplicator
 import dev.webbies.dotenvify.ui.MONO_FONT
 import java.awt.BorderLayout
 import java.awt.Component
 import java.awt.Dimension
+import java.net.ConnectException
+import java.net.http.HttpTimeoutException
 import java.nio.file.Path
 import javax.swing.*
 
@@ -70,7 +72,26 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
         signOutButton.addActionListener { signOut() }
         fetchButton.addActionListener { fetchVariables() }
         applyButton.addActionListener { applyToFile() }
+
+        loadPersistedFields()
         updateAuthState()
+        persistFieldsOnChange()
+    }
+
+    private fun loadPersistedFields() {
+        val state = DotEnvifyProjectSettings.getInstance(project).state
+        if (state.azureOrgUrl.isNotEmpty()) orgUrlField.text = state.azureOrgUrl
+        if (state.azureGroupNames.isNotEmpty()) groupNamesField.text = state.azureGroupNames
+    }
+
+    private fun persistFieldsOnChange() {
+        val save = { _: Any? ->
+            val state = DotEnvifyProjectSettings.getInstance(project).state
+            state.azureOrgUrl = orgUrlField.text.trim()
+            state.azureGroupNames = groupNamesField.text.trim()
+        }
+        orgUrlField.document.addDocumentListener(SimpleDocListener(save))
+        groupNamesField.document.addDocumentListener(SimpleDocListener(save))
     }
 
     private fun updateAuthState() {
@@ -98,7 +119,11 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
                             pollForToken(deviceCode)
                         }
                     }
-                } catch (e: Exception) {
+                } catch (e: ConnectException) {
+                    showError("Cannot reach Azure AD. Check your network connection.")
+                } catch (e: HttpTimeoutException) {
+                    showError("Connection to Azure AD timed out. Try again.")
+                } catch (e: RuntimeException) {
                     showError("Sign in failed: ${e.message}")
                 }
             }
@@ -119,11 +144,11 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
                         if (AzureAuthProvider.pollForToken(deviceCode.deviceCode) != null) {
                             ApplicationManager.getApplication().invokeLater {
                                 updateAuthState()
-                                Messages.showInfoMessage(project, "Successfully signed in to Azure DevOps!", "DotEnvify")
+                                EnvFileApplicator.notify(project, "Successfully signed in to Azure DevOps!")
                             }
                             return
                         }
-                    } catch (e: Exception) {
+                    } catch (e: RuntimeException) {
                         showError("Authentication failed: ${e.message}")
                         return
                     }
@@ -146,7 +171,7 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
         val groups = groupNamesField.text.trim()
 
         if (orgUrl.isEmpty() || groups.isEmpty()) {
-            Messages.showWarningDialog(project, "Please fill in Azure DevOps URL and group name(s).", "DotEnvify")
+            EnvFileApplicator.notify(project, "Please fill in Azure DevOps URL and group name(s).", NotificationType.WARNING)
             return
         }
 
@@ -170,7 +195,13 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
                         applyButton.isEnabled = entries.isNotEmpty()
                         statusLabel.text = "${entries.size} variables fetched"
                     }
-                } catch (e: Exception) {
+                } catch (e: IllegalArgumentException) {
+                    showError("Invalid input: ${e.message}")
+                } catch (e: ConnectException) {
+                    showError("Cannot reach Azure DevOps. Check your network and URL.")
+                } catch (e: HttpTimeoutException) {
+                    showError("Request timed out. Try again.")
+                } catch (e: RuntimeException) {
                     val rootCause = generateSequence<Throwable>(e) { it.cause }.last()
                     val detail = if (rootCause !== e) "${e.message} (${rootCause.javaClass.simpleName}: ${rootCause.message})" else e.message
                     showError("Fetch failed: $detail")
@@ -182,27 +213,12 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
     private fun applyToFile() {
         if (fetchedEntries.isEmpty()) return
         val targetPath = Path.of(project.basePath ?: return, ".env")
-        val existingEntries = DotEnvIO.readEnvFile(targetPath)
-
-        if (existingEntries.isNotEmpty()) {
-            val dialog = EnvDiffDialog(project, existingEntries, fetchedEntries, "Azure DevOps")
-            if (dialog.showAndGet()) {
-                val output = DotEnvFormatter.format(dialog.mergedEntries, FormatOptions())
-                DotEnvIO.writeEnvFile(targetPath, output, backup = true)
-                LocalFileSystem.getInstance().refreshAndFindFileByNioFile(targetPath)
-                Messages.showInfoMessage(project, "Merged ${dialog.mergedEntries.size} variables to .env", "DotEnvify")
-            }
-        } else {
-            val output = DotEnvFormatter.format(fetchedEntries, FormatOptions())
-            DotEnvIO.writeEnvFile(targetPath, output, backup = true)
-            LocalFileSystem.getInstance().refreshAndFindFileByNioFile(targetPath)
-            Messages.showInfoMessage(project, "Saved ${fetchedEntries.size} variables to .env", "DotEnvify")
-        }
+        EnvFileApplicator.apply(project, fetchedEntries, targetPath, "Azure DevOps")
     }
 
     private fun showError(message: String) {
         ApplicationManager.getApplication().invokeLater {
-            Messages.showErrorDialog(project, message, "DotEnvify")
+            EnvFileApplicator.notify(project, message, NotificationType.ERROR)
         }
     }
 
@@ -214,5 +230,12 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
             add(lbl, BorderLayout.WEST)
             add(field, BorderLayout.CENTER)
         }
+    }
+
+    /** Simple DocumentListener that calls an action on any change. */
+    private class SimpleDocListener(private val action: (Any?) -> Unit) : javax.swing.event.DocumentListener {
+        override fun insertUpdate(e: javax.swing.event.DocumentEvent) = action(null)
+        override fun removeUpdate(e: javax.swing.event.DocumentEvent) = action(null)
+        override fun changedUpdate(e: javax.swing.event.DocumentEvent) = action(null)
     }
 }
