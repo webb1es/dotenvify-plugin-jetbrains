@@ -9,7 +9,7 @@ import com.intellij.openapi.progress.ProgressIndicator
 import com.intellij.openapi.progress.ProgressManager
 import com.intellij.openapi.progress.Task
 import com.intellij.openapi.project.Project
-import com.intellij.openapi.ui.Messages
+import com.intellij.openapi.ui.DialogWrapper
 import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
 import com.intellij.ui.components.JBTextArea
@@ -23,6 +23,7 @@ import dev.webbies.dotenvify.ui.EnvFileApplicator
 import dev.webbies.dotenvify.ui.FormatOptionsPanel
 import dev.webbies.dotenvify.ui.MONO_FONT
 import java.awt.*
+import java.awt.datatransfer.StringSelection
 import java.net.ConnectException
 import java.net.http.HttpTimeoutException
 import java.nio.file.Path
@@ -50,7 +51,7 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
 
     // --- Format options ---
     private val optionsPanel = FormatOptionsPanel(project)
-    private val autoWatchCheckbox = JCheckBox("Auto-watch .env").apply {
+    private val autoWatchCheckbox = JCheckBox("Auto-watch .env", true).apply {
         toolTipText = "Automatically refresh preview when .env file changes"
     }
 
@@ -124,6 +125,8 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
         updateAuthState()
         persistFieldsOnChange()
 
+        // Auto-watch enabled by default — register listener immediately
+        project.service<EnvFileWatcher>().addListener(watcherListener)
         autoWatchCheckbox.addItemListener {
             val watcher = project.service<EnvFileWatcher>()
             if (autoWatchCheckbox.isSelected) watcher.addListener(watcherListener)
@@ -214,14 +217,8 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
                     indicator.text = "Requesting device code..."
                     val deviceCode = AzureAuthProvider.startDeviceCodeFlow()
                     ApplicationManager.getApplication().invokeLater {
-                        val choice = Messages.showOkCancelDialog(
-                            project,
-                            "Enter this code in your browser:\n\n    ${deviceCode.userCode}\n\nClick 'Open Browser' to navigate to the sign-in page.",
-                            "Azure DevOps — Sign In",
-                            "Open Browser", "Cancel",
-                            Messages.getInformationIcon()
-                        )
-                        if (choice == Messages.OK) {
+                        val dialog = DeviceCodeDialog(project, deviceCode)
+                        if (dialog.showAndGet()) {
                             BrowserUtil.browse(deviceCode.verificationUri)
                             pollForToken(deviceCode)
                         } else {
@@ -385,5 +382,71 @@ class AzureVariableGroupPanel(private val project: Project) : JPanel(BorderLayou
         override fun insertUpdate(e: javax.swing.event.DocumentEvent) = action()
         override fun removeUpdate(e: javax.swing.event.DocumentEvent) = action()
         override fun changedUpdate(e: javax.swing.event.DocumentEvent) = action()
+    }
+}
+
+/**
+ * Custom dialog for the device code sign-in flow.
+ * Shows the code prominently with a copy-to-clipboard button.
+ */
+private class DeviceCodeDialog(
+    project: Project,
+    private val deviceCode: DeviceCodeResponse,
+) : DialogWrapper(project) {
+
+    init {
+        title = "Azure DevOps — Sign In"
+        setOKButtonText("Open Browser")
+        setCancelButtonText("Cancel")
+        init()
+    }
+
+    override fun createCenterPanel(): JComponent {
+        val panel = JPanel(BorderLayout(0, 12)).apply {
+            border = JBUI.Borders.empty(8)
+        }
+
+        val instructions = JLabel("<html>Enter this code on the Microsoft sign-in page:</html>")
+
+        val codeLabel = JLabel(deviceCode.userCode).apply {
+            font = Font(Font.MONOSPACED, Font.BOLD, 28)
+            horizontalAlignment = SwingConstants.CENTER
+        }
+
+        val copyButton = JButton("Copy Code").apply {
+            icon = AllIcons.Actions.Copy
+            addActionListener {
+                val selection = StringSelection(deviceCode.userCode)
+                Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
+                text = "Copied!"
+                Timer(2000) { text = "Copy Code" }.apply { isRepeats = false; start() }
+            }
+        }
+
+        val codePanel = JPanel(BorderLayout(8, 0)).apply {
+            border = BorderFactory.createCompoundBorder(
+                BorderFactory.createLineBorder(JBColor.border()),
+                JBUI.Borders.empty(12),
+            )
+            add(codeLabel, BorderLayout.CENTER)
+            add(copyButton, BorderLayout.EAST)
+        }
+
+        val hint = JLabel("<html><i>Click 'Open Browser' to navigate to the sign-in page.<br>" +
+                "The code has been copied to your clipboard for convenience.</i></html>").apply {
+            foreground = JBColor.GRAY
+        }
+
+        panel.add(instructions, BorderLayout.NORTH)
+        panel.add(codePanel, BorderLayout.CENTER)
+        panel.add(hint, BorderLayout.SOUTH)
+
+        // Auto-copy on dialog open
+        SwingUtilities.invokeLater {
+            val selection = StringSelection(deviceCode.userCode)
+            Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
+        }
+
+        return panel
     }
 }

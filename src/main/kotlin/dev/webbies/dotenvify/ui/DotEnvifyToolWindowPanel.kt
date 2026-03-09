@@ -36,8 +36,19 @@ class DotEnvifyToolWindowPanel(private val project: Project) : JPanel(BorderLayo
     private val optionsPanel = FormatOptionsPanel(project)
     private val statusLabel = JLabel(" ")
 
-    private val autoWatchCheckbox = JCheckBox("Auto-watch .env").apply {
+    private val autoWatchCheckbox = JCheckBox("Auto-watch .env", true).apply {
         toolTipText = "Automatically refresh preview when .env file changes"
+    }
+
+    // Action buttons as fields so we can update their enabled state
+    private val clearButton = JButton("Clear").apply {
+        icon = AllIcons.Actions.GC; isEnabled = false
+    }
+    private val applyButton = JButton("Apply to .env").apply {
+        icon = AllIcons.Actions.MenuSaveall; isEnabled = false
+    }
+    private val copyButton = JButton("Copy to Clipboard").apply {
+        icon = AllIcons.Actions.Copy; isEnabled = false
     }
 
     private var currentEntries: List<EnvEntry> = emptyList()
@@ -71,6 +82,14 @@ class DotEnvifyToolWindowPanel(private val project: Project) : JPanel(BorderLayo
         }
 
         // === BOTTOM: Action buttons + status ===
+        clearButton.addActionListener {
+            inputArea.text = ""; outputArea.text = ""
+            statusLabel.text = " "; currentEntries = emptyList()
+            updateButtonStates()
+        }
+        applyButton.addActionListener { applyToFile() }
+        copyButton.addActionListener { copyToClipboard() }
+
         val bottomRow = JPanel(BorderLayout()).apply {
             border = JBUI.Borders.emptyTop(4)
             val actions = JPanel(FlowLayout(FlowLayout.LEFT, 4, 0)).apply {
@@ -78,22 +97,10 @@ class DotEnvifyToolWindowPanel(private val project: Project) : JPanel(BorderLayo
                     icon = AllIcons.Actions.MenuPaste
                     addActionListener { pasteFromClipboard() }
                 })
-                add(JButton("Clear").apply {
-                    icon = AllIcons.Actions.GC
-                    addActionListener {
-                        inputArea.text = ""; outputArea.text = ""
-                        statusLabel.text = " "; currentEntries = emptyList()
-                    }
-                })
+                add(clearButton)
                 add(JSeparator(SwingConstants.VERTICAL).apply { preferredSize = java.awt.Dimension(2, 24) })
-                add(JButton("Apply to .env").apply {
-                    icon = AllIcons.Actions.MenuSaveall
-                    addActionListener { applyToFile() }
-                })
-                add(JButton("Copy to Clipboard").apply {
-                    icon = AllIcons.Actions.Copy
-                    addActionListener { copyToClipboard() }
-                })
+                add(applyButton)
+                add(copyButton)
             }
             add(actions, BorderLayout.WEST)
             add(statusLabel, BorderLayout.EAST)
@@ -113,6 +120,8 @@ class DotEnvifyToolWindowPanel(private val project: Project) : JPanel(BorderLayo
 
         setupDragAndDrop()
 
+        // Auto-watch enabled by default — register listener immediately
+        project.service<EnvFileWatcher>().addListener(watcherListener)
         autoWatchCheckbox.addItemListener {
             val watcher = project.service<EnvFileWatcher>()
             if (autoWatchCheckbox.isSelected) watcher.addListener(watcherListener)
@@ -120,22 +129,33 @@ class DotEnvifyToolWindowPanel(private val project: Project) : JPanel(BorderLayo
         }
     }
 
+    private fun updateButtonStates() {
+        val hasInput = inputArea.text.isNotBlank()
+        val hasEntries = currentEntries.isNotEmpty()
+        clearButton.isEnabled = hasInput
+        applyButton.isEnabled = hasEntries
+        copyButton.isEnabled = hasEntries
+    }
+
     private fun updatePreview() {
         val input = inputArea.text
         if (input.isBlank()) {
-            outputArea.text = ""; statusLabel.text = " "; currentEntries = emptyList(); return
+            outputArea.text = ""; statusLabel.text = " "; currentEntries = emptyList()
+            updateButtonStates(); return
         }
 
         val result = DotEnvParser.parse(input)
         currentEntries = result.entries
         if (result.entries.isEmpty()) {
-            outputArea.text = ""; statusLabel.text = "No entries found"; return
+            outputArea.text = ""; statusLabel.text = "No entries found"
+            updateButtonStates(); return
         }
 
         outputArea.text = DotEnvFormatter.format(result.entries, optionsPanel.options())
         val warnings = if (result.warnings.isNotEmpty()) " | ${result.warnings.size} warning(s)" else ""
         val formatted = if (result.alreadyFormatted) " | Already .env format" else ""
         statusLabel.text = "${result.entries.size} entries$warnings$formatted"
+        updateButtonStates()
     }
 
     private fun applyToFile() {

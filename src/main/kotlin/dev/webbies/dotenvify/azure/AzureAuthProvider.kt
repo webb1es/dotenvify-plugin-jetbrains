@@ -16,6 +16,8 @@ import java.time.Instant
 /**
  * Azure AD OAuth via Device Code Flow.
  * Uses the VS Code public client ID — works across all tenants without app registration.
+ * The Microsoft sign-in page shows "Visual Studio" as the app name — this is expected
+ * since it's a shared Microsoft first-party client for developer tools.
  * Tokens are stored in JetBrains Password Safe.
  */
 object AzureAuthProvider {

@@ -25,7 +25,7 @@ import javax.swing.*
 class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
 
     private val scanButton = JButton("Run Diagnostics").apply { icon = AllIcons.Actions.Find }
-    private val autoWatchCheckbox = JCheckBox("Auto-watch .env").apply {
+    private val autoWatchCheckbox = JCheckBox("Auto-watch .env", true).apply {
         toolTipText = "Automatically re-run diagnostics when .env file changes"
     }
     private val statusLabel = JLabel("Click 'Run Diagnostics' to scan your project")
@@ -93,9 +93,12 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
         add(bottomRow, BorderLayout.SOUTH)
 
         scanButton.addActionListener { runDiagnostics() }
+
+        // Auto-watch enabled by default — register listener immediately
+        project.service<EnvFileWatcher>().addListener(watcherListener)
         autoWatchCheckbox.addItemListener {
             val watcher = project.service<EnvFileWatcher>()
-            if (autoWatchCheckbox.isSelected) { watcher.addListener(watcherListener); runDiagnostics() }
+            if (autoWatchCheckbox.isSelected) watcher.addListener(watcherListener)
             else watcher.removeListener(watcherListener)
         }
 
