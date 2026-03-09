@@ -205,6 +205,29 @@
 - [x] (2026-03-08) Register notification group in plugin.xml
 - [x] (2026-03-08) Narrow broad `catch (_: Exception)` to specific exception types where possible
 
+### 3.5.5 CLI Feature Parity & Azure Polish
+- [x] (2026-03-08) Add "already in correct format" detection (matches CLI behavior)
+- [x] (2026-03-08) Format options (FormatOptionsPanel) available in both Convert and Azure tabs
+- [x] (2026-03-08) Azure DevOps URL persisted globally (DotEnvifySettings), variable group per project
+- [x] (2026-03-08) Simplified to single variable group (removed multi-group complexity)
+- [x] (2026-03-08) Azure tab is now the default/first tab (primary feature)
+- [x] (2026-03-08) Side-by-side layout in Convert tab (uses full width)
+- [x] (2026-03-08) Azure panel uses FormBuilder for clean layout, shows group description
+- [x] (2026-03-08) Auth status with green/red icon indicator
+- [x] (2026-03-08) Button icons (AllIcons) on all action buttons for visual clarity
+- [x] (2026-03-08) Plugin description leads with Azure DevOps as selling point
+- [x] (2026-03-08) Settings configurables use FormBuilder for proper label alignment
+- [x] (2026-03-08) New plugin icon with convert arrow + .env visual motif
+
+### 3.5.6 Final Polish & Bug Fixes
+- [x] (2026-03-08) Fix comparison bug — normalize values with `unquote()` in all parser paths and diff comparison
+- [x] (2026-03-08) Auto-watch .env toggle on all tabs (Azure, Paste & Format, Diagnostics)
+- [x] (2026-03-08) Side-by-side URL and variable group fields in Azure panel
+- [x] (2026-03-08) Default `ignoreLowercase = true` in FormatOptions and settings
+- [x] (2026-03-08) JBColor theme support for EnvDiffDialog status colors (light/dark)
+- [x] (2026-03-08) Colorful gradient plugin icon (purple-blue gradient, warm accent colors)
+- [x] (2026-03-08) Renamed "Convert" tab to "Paste & Format" for clarity
+
 ---
 
 ## Phase 4: Ecosystem
@@ -232,3 +255,5 @@ _Add notes here as you work through tasks. This helps with context when resuming
 - **2026-03-07:** Phase 3.3 (Merge/Diff) implemented — EnvDiffDialog shows side-by-side merge preview (added/removed/changed/unchanged), integrated into both Azure and Convert "Apply to .env" flows.
 - **2026-03-07:** Removed all .env.example functionality (GenerateExampleAction, formatExample, related tests/references).
 - **2026-03-08:** Phase 3.5 (Simplification, Optimization & UX Polish) — extracted FormatOptionsPanel and EnvFileApplicator to eliminate duplication; wired settings into tool window/actions; added debounced preview, lazy file scanning with 1MB cap; replaced modal dialogs with balloon notifications; diagnostics now clickable with file navigation; EnvDiffDialog upgraded to table with per-key merge checkboxes; added drag-and-drop, paste button, tool window icons, plugin icon, change-notes, ConvertFile shortcut, notification group; narrowed exception catches.
+- **2026-03-08:** Phase 3.5.5 (CLI Parity & Azure Polish) — added "already in correct format" detection; format options available in both Convert and Azure tabs; Azure URL global / group per-project; simplified to single variable group; Azure tab now default; side-by-side Convert layout; FormBuilder layouts; auth status icons; button icons; new plugin icon; plugin description leads with Azure.
+- **2026-03-08:** Phase 3.5.6 (Final Polish & Bug Fixes) — fixed comparison bug (unquote normalization in parser + diff); auto-watch .env on all tabs; side-by-side URL/group in Azure panel; ignoreLowercase default true; JBColor theme support in diff dialog; colorful gradient plugin icon; renamed Convert to "Paste & Format".

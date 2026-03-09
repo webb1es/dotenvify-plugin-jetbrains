@@ -2,7 +2,7 @@ package dev.webbies.dotenvify.settings
 
 import com.intellij.openapi.options.Configurable
 import com.intellij.openapi.project.Project
-import java.awt.Component
+import com.intellij.util.ui.FormBuilder
 import java.awt.event.ItemEvent
 import javax.swing.*
 
@@ -15,7 +15,10 @@ class DotEnvifyProjectSettingsConfigurable(private val project: Project) : Confi
     private val urlOnlyCheckbox = JCheckBox("URL-only values")
     private val outputPathField = JTextField(".env", 20)
     private val preserveKeysField = JTextField("", 30)
-    private val projectControls = listOf<JComponent>(
+    private val azureGroupNameField = JTextField("", 25).apply {
+        toolTipText = "Azure DevOps variable group name for this project"
+    }
+    private val formatControls = listOf<JComponent>(
         exportCheckbox, sortCheckbox, noLowerCheckbox, urlOnlyCheckbox, outputPathField, preserveKeysField,
     )
 
@@ -23,26 +26,26 @@ class DotEnvifyProjectSettingsConfigurable(private val project: Project) : Confi
 
     override fun createComponent(): JComponent {
         useGlobalCheckbox.addItemListener { e ->
-            projectControls.forEach { it.isEnabled = e.stateChange == ItemEvent.DESELECTED }
+            formatControls.forEach { it.isEnabled = e.stateChange == ItemEvent.DESELECTED }
         }
         reset()
 
-        return JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.Y_AXIS)
-            border = BorderFactory.createEmptyBorder(8, 8, 8, 8)
-            add(useGlobalCheckbox)
-            add(Box.createVerticalStrut(12))
-            add(JLabel("Project format options:"))
-            add(Box.createVerticalStrut(8))
-            add(exportCheckbox)
-            add(sortCheckbox)
-            add(noLowerCheckbox)
-            add(urlOnlyCheckbox)
-            add(Box.createVerticalStrut(12))
-            add(labeledRow("Output path: ", outputPathField))
-            add(Box.createVerticalStrut(8))
-            add(labeledRow("Preserve keys (comma-separated): ", preserveKeysField))
-        }
+        return FormBuilder.createFormBuilder()
+            .addComponent(useGlobalCheckbox)
+            .addSeparator()
+            .addComponent(JLabel("Format Options"))
+            .addComponent(exportCheckbox)
+            .addComponent(sortCheckbox)
+            .addComponent(noLowerCheckbox)
+            .addComponent(urlOnlyCheckbox)
+            .addSeparator()
+            .addLabeledComponent("Output path:", outputPathField)
+            .addLabeledComponent("Preserve keys (comma-separated):", preserveKeysField)
+            .addSeparator()
+            .addComponent(JLabel("Azure DevOps"))
+            .addLabeledComponent("Variable group:", azureGroupNameField)
+            .addComponentFillVertically(JPanel(), 0)
+            .panel
     }
 
     override fun isModified(): Boolean {
@@ -53,7 +56,8 @@ class DotEnvifyProjectSettingsConfigurable(private val project: Project) : Confi
             noLowerCheckbox.isSelected != s.ignoreLowercase ||
             urlOnlyCheckbox.isSelected != s.urlOnly ||
             outputPathField.text != s.outputPath ||
-            preserveKeysField.text != s.preserveKeys
+            preserveKeysField.text != s.preserveKeys ||
+            azureGroupNameField.text != s.azureGroupName
     }
 
     override fun apply() {
@@ -65,6 +69,7 @@ class DotEnvifyProjectSettingsConfigurable(private val project: Project) : Confi
         s.urlOnly = urlOnlyCheckbox.isSelected
         s.outputPath = outputPathField.text
         s.preserveKeys = preserveKeysField.text
+        s.azureGroupName = azureGroupNameField.text.trim()
     }
 
     override fun reset() {
@@ -76,13 +81,7 @@ class DotEnvifyProjectSettingsConfigurable(private val project: Project) : Confi
         urlOnlyCheckbox.isSelected = s.urlOnly
         outputPathField.text = s.outputPath
         preserveKeysField.text = s.preserveKeys
-        projectControls.forEach { it.isEnabled = !s.useGlobalDefaults }
-    }
-
-    private fun labeledRow(label: String, field: JComponent) = JPanel().apply {
-        layout = BoxLayout(this, BoxLayout.X_AXIS)
-        alignmentX = Component.LEFT_ALIGNMENT
-        add(JLabel(label))
-        add(field)
+        azureGroupNameField.text = s.azureGroupName
+        formatControls.forEach { it.isEnabled = !s.useGlobalDefaults }
     }
 }

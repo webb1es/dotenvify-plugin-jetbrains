@@ -62,30 +62,30 @@ class AzureDevOpsClient(private val organization: String, private val project: S
             ?: throw RuntimeException("Variable group '$name' not found. Available: ${groups.joinToString { it.name }}")
     }
 
-    /** Fetches variables from comma-separated group names. Last-group-wins for duplicates. */
-    fun fetchVariables(groupNames: String, accessToken: String): FetchResult {
-        val names = groupNames.split(",").map { it.trim() }.filter { it.isNotEmpty() }
-        if (names.isEmpty()) throw IllegalArgumentException("No group names provided")
+    /** Fetches variables from a single variable group. */
+    fun fetchVariables(groupName: String, accessToken: String): FetchResult {
+        val name = groupName.trim()
+        if (name.isEmpty()) throw IllegalArgumentException("No group name provided")
 
-        val merged = mutableMapOf<String, String>()
+        val group = getVariableGroupByName(name, accessToken)
+        val variables = mutableMapOf<String, String>()
         val warnings = mutableListOf<String>()
 
-        for (name in names) {
-            val group = getVariableGroupByName(name, accessToken)
-            for ((key, variable) in group.variables) {
-                if (variable.isSecret) {
-                    warnings.add("'$key' in '$name' is a secret — value not available via API")
-                    continue
-                }
-                if (key in merged) {
-                    warnings.add("'$key' found in multiple groups — using value from '$name'")
-                }
-                merged[key] = variable.value
+        for ((key, variable) in group.variables) {
+            if (variable.isSecret) {
+                warnings.add("'$key' is a secret — value not available via API")
+                continue
             }
+            variables[key] = variable.value
         }
 
-        return FetchResult(merged, warnings)
+        return FetchResult(variables, warnings, group.name, group.description)
     }
 
-    data class FetchResult(val variables: Map<String, String>, val warnings: List<String>)
+    data class FetchResult(
+        val variables: Map<String, String>,
+        val warnings: List<String>,
+        val groupName: String = "",
+        val groupDescription: String = "",
+    )
 }

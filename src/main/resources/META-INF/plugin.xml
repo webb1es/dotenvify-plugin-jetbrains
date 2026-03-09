@@ -4,22 +4,32 @@
     <vendor email="hello@webbies.dev" url="https://webbies.dev">Webbies</vendor>
 
     <description><![CDATA[
-    Convert raw key-value pairs into properly formatted .env files — directly in your IDE.
+    Pull environment variables from Azure DevOps Variable Groups directly into your .env file — no CLI, no portal copy-paste.
 
-    <h3>Features</h3>
+    <h3>Azure DevOps Integration</h3>
+    <ul>
+        <li>Fetch variables from Azure DevOps Variable Groups with one click</li>
+        <li>Secure OAuth sign-in (Device Code Flow) — no tokens in config files</li>
+        <li>Live preview with format options before writing</li>
+        <li>Smart merge when .env already exists — per-key conflict resolution</li>
+        <li>Organization URL saved globally, variable group saved per project</li>
+    </ul>
+
+    <h3>Convert &amp; Format</h3>
     <ul>
         <li>Parse multiple input formats (KEY=VALUE, KEY VALUE, line pairs, quoted values)</li>
-        <li>Optional <code>export</code> prefix</li>
         <li>Smart quoting for URLs and values with spaces</li>
-        <li>Alphabetical sorting</li>
-        <li>Filter: ignore lowercase keys, URL-only values</li>
-        <li>Preserve specific keys from existing .env</li>
+        <li>Optional <code>export</code> prefix, alphabetical sorting, filters</li>
         <li>Incremental backups before overwriting</li>
-        <li>Tool window with live preview</li>
-        <li>Drag-and-drop file support</li>
-        <li>Azure DevOps variable group integration with OAuth</li>
-        <li>Multi-language diagnostics: detect missing/unused env keys across JS, Python, Go, Java, Kotlin, Ruby, PHP, Rust, C#, YAML</li>
-        <li>Merge preview with per-key conflict resolution</li>
+        <li>Drag-and-drop file support, clipboard paste</li>
+    </ul>
+
+    <h3>Diagnostics</h3>
+    <ul>
+        <li>Detect missing env keys (referenced in code but not in .env)</li>
+        <li>Detect unused keys (in .env but never referenced)</li>
+        <li>Click to navigate to source file — supports JS, Python, Go, Java, Kotlin, Ruby, PHP, Rust, C#, YAML</li>
+        <li>Auto-watch: re-run diagnostics when .env changes</li>
     </ul>
     ]]></description>
 

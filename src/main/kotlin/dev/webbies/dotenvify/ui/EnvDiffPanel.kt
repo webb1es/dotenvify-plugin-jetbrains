@@ -2,7 +2,9 @@ package dev.webbies.dotenvify.ui
 
 import com.intellij.openapi.project.Project
 import com.intellij.openapi.ui.DialogWrapper
+import com.intellij.ui.JBColor
 import com.intellij.ui.components.JBScrollPane
+import dev.webbies.dotenvify.core.DotEnvParser
 import dev.webbies.dotenvify.core.EnvEntry
 import java.awt.BorderLayout
 import java.awt.Component
@@ -123,7 +125,7 @@ class EnvDiffDialog(
             MergeRow(key, e, i, when {
                 e == null -> Status.ADDED
                 i == null -> Status.REMOVED
-                e != i -> Status.CHANGED
+                DotEnvParser.unquote(e) != DotEnvParser.unquote(i) -> Status.CHANGED
                 else -> Status.UNCHANGED
             })
         }.toMutableList()
@@ -137,9 +139,9 @@ class EnvDiffDialog(
             val comp = super.getTableCellRendererComponent(table, value, isSelected, hasFocus, row, col)
             if (!isSelected && col == 3) {
                 foreground = when (value) {
-                    "ADDED" -> java.awt.Color(0, 128, 0)
-                    "CHANGED" -> java.awt.Color(200, 150, 0)
-                    "REMOVED" -> java.awt.Color(128, 128, 128)
+                    "ADDED" -> JBColor(java.awt.Color(0, 128, 0), java.awt.Color(80, 200, 80))
+                    "CHANGED" -> JBColor(java.awt.Color(200, 150, 0), java.awt.Color(220, 180, 50))
+                    "REMOVED" -> JBColor(java.awt.Color(128, 128, 128), java.awt.Color(160, 160, 160))
                     else -> table.foreground
                 }
             }

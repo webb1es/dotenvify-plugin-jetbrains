@@ -39,21 +39,21 @@ object DotEnvParser {
             val parts = line.split(WHITESPACE)
 
             if (parts.size == 2) {
-                entries.add(EnvEntry(parts[0], parts[1]))
+                entries.add(EnvEntry(parts[0], unquote(parts[1])))
                 i++
                 continue
             }
 
             if (parts.size >= 4 && parts.size % 2 == 0) {
                 for (j in parts.indices step 2) {
-                    if (parts[j].isNotEmpty()) entries.add(EnvEntry(parts[j], parts[j + 1]))
+                    if (parts[j].isNotEmpty()) entries.add(EnvEntry(parts[j], unquote(parts[j + 1])))
                 }
                 i++
                 continue
             }
 
             if (i + 1 < lines.size) {
-                entries.add(EnvEntry(line, lines[i + 1]))
+                entries.add(EnvEntry(line, unquote(lines[i + 1])))
                 i += 2
             } else {
                 warnings.add("Key '$line' has no value (end of input)")
@@ -61,10 +61,15 @@ object DotEnvParser {
             }
         }
 
-        return ParseResult(entries, warnings)
+        val alreadyFormatted = lines.isNotEmpty() && lines.all { line ->
+            val s = line.removePrefix("export ").trimStart()
+            s.contains('=')
+        }
+
+        return ParseResult(entries, warnings, alreadyFormatted)
     }
 
-    private fun unquote(value: String): String {
+    fun unquote(value: String): String {
         if (value.length >= 2 &&
             ((value.startsWith('"') && value.endsWith('"')) ||
                 (value.startsWith('\'') && value.endsWith('\'')))

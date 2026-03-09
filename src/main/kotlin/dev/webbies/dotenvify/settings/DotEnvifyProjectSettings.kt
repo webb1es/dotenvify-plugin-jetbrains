@@ -15,12 +15,11 @@ class DotEnvifyProjectSettings : PersistentStateComponent<DotEnvifyProjectSettin
         var useGlobalDefaults: Boolean = true,
         var exportPrefix: Boolean = false,
         var sort: Boolean = true,
-        var ignoreLowercase: Boolean = false,
+        var ignoreLowercase: Boolean = true,
         var urlOnly: Boolean = false,
         var outputPath: String = ".env",
         var preserveKeys: String = "",
-        var azureOrgUrl: String = "",
-        var azureGroupNames: String = "",
+        var azureGroupName: String = "",
     )
 
     private var state = State()

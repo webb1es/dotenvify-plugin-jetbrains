@@ -1,5 +1,6 @@
 package dev.webbies.dotenvify.diagnostics
 
+import com.intellij.icons.AllIcons
 import com.intellij.openapi.application.ApplicationManager
 import com.intellij.openapi.components.service
 import com.intellij.openapi.fileEditor.OpenFileDescriptor
@@ -12,10 +13,9 @@ import com.intellij.ui.ColoredListCellRenderer
 import com.intellij.ui.SimpleTextAttributes
 import com.intellij.ui.components.JBList
 import com.intellij.ui.components.JBScrollPane
-import dev.webbies.dotenvify.ui.EnvFileApplicator
-import com.intellij.notification.NotificationType
+import com.intellij.util.ui.JBUI
 import java.awt.BorderLayout
-import java.awt.Dimension
+import java.awt.FlowLayout
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 import java.nio.file.Files
@@ -24,7 +24,7 @@ import javax.swing.*
 
 class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
 
-    private val scanButton = JButton("Run Diagnostics")
+    private val scanButton = JButton("Run Diagnostics").apply { icon = AllIcons.Actions.Find }
     private val autoWatchCheckbox = JCheckBox("Auto-watch .env").apply {
         toolTipText = "Automatically re-run diagnostics when .env file changes"
     }
@@ -66,20 +66,31 @@ class DiagnosticsPanel(private val project: Project) : JPanel(BorderLayout()) {
     }
 
     init {
-        border = BorderFactory.createEmptyBorder(8, 8, 8, 8)
+        border = JBUI.Borders.empty(8)
 
-        val buttonPanel = JPanel().apply {
-            layout = BoxLayout(this, BoxLayout.X_AXIS)
-            add(scanButton); add(Box.createHorizontalStrut(12))
-            add(autoWatchCheckbox); add(Box.createHorizontalGlue())
-            add(statusLabel)
+        // === TOP: Auto-watch ===
+        val optionsRow = JPanel(BorderLayout()).apply {
+            add(autoWatchCheckbox, BorderLayout.WEST)
         }
 
-        add(buttonPanel, BorderLayout.NORTH)
-        add(JBScrollPane(resultList).apply {
-            preferredSize = Dimension(600, 400)
+        // === CENTER: Results ===
+        val resultsPanel = JBScrollPane(resultList).apply {
             border = BorderFactory.createTitledBorder("Results")
-        }, BorderLayout.CENTER)
+        }
+
+        // === BOTTOM: Action buttons + status ===
+        val bottomRow = JPanel(BorderLayout()).apply {
+            border = JBUI.Borders.emptyTop(4)
+            val actions = JPanel(FlowLayout(FlowLayout.LEFT, 4, 0)).apply {
+                add(scanButton)
+            }
+            add(actions, BorderLayout.WEST)
+            add(statusLabel, BorderLayout.EAST)
+        }
+
+        add(optionsRow, BorderLayout.NORTH)
+        add(resultsPanel, BorderLayout.CENTER)
+        add(bottomRow, BorderLayout.SOUTH)
 
         scanButton.addActionListener { runDiagnostics() }
         autoWatchCheckbox.addItemListener {

@@ -14,9 +14,10 @@ class DotEnvifySettings : PersistentStateComponent<DotEnvifySettings.State> {
     data class State(
         var exportPrefix: Boolean = false,
         var sort: Boolean = true,
-        var ignoreLowercase: Boolean = false,
+        var ignoreLowercase: Boolean = true,
         var urlOnly: Boolean = false,
         var defaultOutputPath: String = ".env",
+        var azureOrgUrl: String = "",
     )
 
     private var state = State()
