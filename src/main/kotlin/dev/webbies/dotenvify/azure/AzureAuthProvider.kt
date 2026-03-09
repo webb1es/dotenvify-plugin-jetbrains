@@ -15,14 +15,14 @@ import java.time.Instant
 
 /**
  * Azure AD OAuth via Device Code Flow (v2.0 endpoint).
- * Uses the VS Code public client ID — works across all tenants without app registration.
- * The v2.0 endpoint shows "Visual Studio" (not "Visual Studio - Legacy") on the sign-in page.
+ * Uses DotEnvify's own registered Azure AD app (multitenant).
+ * The sign-in page shows "DotEnvify" as the app name.
  * Tokens are stored in JetBrains Password Safe.
  */
 object AzureAuthProvider {
 
     private const val AZURE_DEVOPS_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
-    private const val CLIENT_ID = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1"
+    private const val CLIENT_ID = "da9da08f-6645-413f-81e3-279e820604dc"
     private const val TENANT = "common"
     private const val TOKEN_URL = "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/token"
     private const val DEVICE_CODE_URL = "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/devicecode"
