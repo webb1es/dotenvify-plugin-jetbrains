@@ -21,7 +21,7 @@ import java.time.Instant
  */
 object AzureAuthProvider {
 
-    private const val AZURE_DEVOPS_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
+    private const val AZURE_DEVOPS_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/vso.variablegroups_read"
     private const val CLIENT_ID = "da9da08f-6645-413f-81e3-279e820604dc"
     private const val TENANT = "common"
     private const val TOKEN_URL = "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/token"
