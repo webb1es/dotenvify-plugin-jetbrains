@@ -14,19 +14,18 @@ import java.time.Duration
 import java.time.Instant
 
 /**
- * Azure AD OAuth via Device Code Flow.
+ * Azure AD OAuth via Device Code Flow (v2.0 endpoint).
  * Uses the VS Code public client ID — works across all tenants without app registration.
- * The Microsoft sign-in page shows "Visual Studio" as the app name — this is expected
- * since it's a shared Microsoft first-party client for developer tools.
+ * The v2.0 endpoint shows "Visual Studio" (not "Visual Studio - Legacy") on the sign-in page.
  * Tokens are stored in JetBrains Password Safe.
  */
 object AzureAuthProvider {
 
-    private const val RESOURCE = "499b84ac-1321-427f-aa17-267ca6975798"
+    private const val AZURE_DEVOPS_SCOPE = "499b84ac-1321-427f-aa17-267ca6975798/.default"
     private const val CLIENT_ID = "872cd9fa-d31f-45e0-9eab-6e460a02d1f1"
     private const val TENANT = "common"
-    private const val TOKEN_URL = "https://login.microsoftonline.com/$TENANT/oauth2/token"
-    private const val DEVICE_CODE_URL = "https://login.microsoftonline.com/$TENANT/oauth2/devicecode"
+    private const val TOKEN_URL = "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/token"
+    private const val DEVICE_CODE_URL = "https://login.microsoftonline.com/$TENANT/oauth2/v2.0/devicecode"
     private const val CREDENTIAL_KEY = "DotEnvify-AzureDevOps"
 
     private val gson = Gson()
@@ -35,7 +34,7 @@ object AzureAuthProvider {
         .build()
 
     fun startDeviceCodeFlow(): DeviceCodeResponse {
-        val json = post(DEVICE_CODE_URL, "client_id=$CLIENT_ID&resource=$RESOURCE")
+        val json = post(DEVICE_CODE_URL, "client_id=$CLIENT_ID&scope=$AZURE_DEVOPS_SCOPE offline_access")
 
         return DeviceCodeResponse(
             deviceCode = json.str("device_code") ?: error("Missing device_code"),
@@ -49,7 +48,7 @@ object AzureAuthProvider {
 
     /** Returns null if still pending, throws on error/expiry. */
     fun pollForToken(deviceCode: String): TokenResponse? {
-        val body = "grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=$CLIENT_ID&code=$deviceCode"
+        val body = "grant_type=urn:ietf:params:oauth:grant-type:device_code&client_id=$CLIENT_ID&device_code=$deviceCode"
         val response = httpClient.send(
             formPost(TOKEN_URL, body),
             HttpResponse.BodyHandlers.ofString(),
@@ -91,7 +90,7 @@ object AzureAuthProvider {
     }
 
     private fun refreshToken(refreshToken: String): String? {
-        val body = "grant_type=refresh_token&client_id=$CLIENT_ID&refresh_token=$refreshToken&resource=$RESOURCE"
+        val body = "grant_type=refresh_token&client_id=$CLIENT_ID&refresh_token=$refreshToken&scope=$AZURE_DEVOPS_SCOPE offline_access"
         val response = try {
             httpClient.send(formPost(TOKEN_URL, body), HttpResponse.BodyHandlers.ofString())
         } catch (_: Exception) {

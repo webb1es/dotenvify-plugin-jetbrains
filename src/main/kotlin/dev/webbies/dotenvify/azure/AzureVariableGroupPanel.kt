@@ -432,20 +432,14 @@ private class DeviceCodeDialog(
             add(copyButton, BorderLayout.EAST)
         }
 
-        val hint = JLabel("<html><i>Click 'Open Browser' to navigate to the sign-in page.<br>" +
-                "The code has been copied to your clipboard for convenience.</i></html>").apply {
+        val hint = JLabel("<html><i>Click 'Open Browser' to navigate to the Microsoft sign-in page,<br>" +
+                "then paste the code above when prompted.</i></html>").apply {
             foreground = JBColor.GRAY
         }
 
         panel.add(instructions, BorderLayout.NORTH)
         panel.add(codePanel, BorderLayout.CENTER)
         panel.add(hint, BorderLayout.SOUTH)
-
-        // Auto-copy on dialog open
-        SwingUtilities.invokeLater {
-            val selection = StringSelection(deviceCode.userCode)
-            Toolkit.getDefaultToolkit().systemClipboard.setContents(selection, null)
-        }
 
         return panel
     }
